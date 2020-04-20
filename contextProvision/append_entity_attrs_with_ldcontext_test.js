@@ -2,6 +2,7 @@ const testedResource = require('../common.js').testedResource;
 const http = require('../http.js');
 
 const entitiesResource = testedResource + '/entities/';
+const assertRetrievedAlternatives = require('../common.js').assertRetrievedAlternatives;
 
 const JSON_LD_HEADERS = {
     'Content-Type': 'application/ld+json'
@@ -11,6 +12,11 @@ const ACCEPT_LD = {
     Accept: 'application/ld+json'
 };
 
+const coreContexts = [
+    'https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld',
+    ['https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld']
+];
+
 // Patches the object and returns a new copy of the patched object
 // TECHNICAL DEBT: It should be imported from common.js
 function patchObj(target, patch) {
@@ -19,7 +25,7 @@ function patchObj(target, patch) {
 }
 
 describe('Append Entity Attributes. JSON-LD @context', () => {
-    const entity = {
+    let entity = {
         id: 'urn:ngsi-ld:T:' + new Date().getTime(),
         type: 'T',
         P1: {
@@ -88,8 +94,8 @@ describe('Append Entity Attributes. JSON-LD @context', () => {
 
         const checkResponse = await http.get(`${entitiesResource}${entityId}`, ACCEPT_LD);
 
-        const finalEntity = patchObj(entity, appendedAttributes);
-        expect(checkResponse.body).toEqual(finalEntity);
+        entity = patchObj(entity, appendedAttributes);
+        assertRetrievedAlternatives(checkResponse, entity, 'application/ld+json', coreContexts);
     });
 
     it('append Entity Attributes. Attributes are overwritten 080', async function() {
@@ -104,8 +110,8 @@ describe('Append Entity Attributes. JSON-LD @context', () => {
         expect(response.response).toHaveProperty('statusCode', 204);
 
         const checkResponse = await http.get(`${entitiesResource}${entityId}`, ACCEPT_LD);
-        const finalEntity = patchObj(entity, overwrittenAttrs);
-        expect(checkResponse.body).toEqual(finalEntity);
+        entity = patchObj(entity, overwrittenAttrs);
+        assertRetrievedAlternatives(checkResponse, entity, 'application/ld+json', coreContexts);
     });
 
     it('append Entity Attributes. Attributes should not be overwritten. Partial success 081', async function() {
@@ -127,9 +133,8 @@ describe('Append Entity Attributes. JSON-LD @context', () => {
         );
         expect(response.response).toHaveProperty('statusCode', 207);
 
-        const finalEntity = patchObj(entity, {});
-        finalEntity.P2 = overwrittenAttrs.P2;
+        entity.P2 = overwrittenAttrs.P2;
         const checkResponse = await http.get(entitiesResource + entityId, ACCEPT_LD);
-        expect(checkResponse.body).toEqual(finalEntity);
+        assertRetrievedAlternatives(checkResponse, entity, 'application/ld+json', coreContexts);
     });
 });
